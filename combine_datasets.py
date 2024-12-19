@@ -1,26 +1,30 @@
+import os
 import pandas as pd
-path1 = "climate change/bird dataset/0018853-241126133413365/occurrence.txt"
-path2 = "climate change/bird dataset/0018869-241126133413365/occurrence.txt"
 
-data1 = pd.read_csv(path1, sep="\t")  
-data2 = pd.read_csv(path2, sep="\t")
+occurrence_paths = [
+    r"S:\Impact of Climate Change on Birds\Capstone 2\Climate change\bird dataset\0018853-241126133413365\occurrence.txt",
+    r"S:\Impact of Climate Change on Birds\Capstone 2\Climate change\bird dataset\0018869-241126133413365\occurrence.txt"
+]
 
-print("Dataset 1:")
-print(data1.head())
-print("\nDataset 2:")
-print(data2.head())
+def combine_datasets(file_paths, output_path):
+    combined_data = []
 
-combined_data = pd.concat([data1, data2], ignore_index=True)
+    for file_path in file_paths:
+        if os.path.exists(file_path):
+            try:
+                bird_data = pd.read_csv(file_path, sep="\t")
+                combined_data.append(bird_data)
+            except Exception as e:
+                print(f"Error reading file {file_path}: {e}")
+        else:
+            print(f"File not found: {file_path}")
 
-print("Combined Dataset:")
-print(combined_data.head())
+    if combined_data:
+        combined_df = pd.concat(combined_data, ignore_index=True)
+        combined_df.to_csv(output_path, index=False)
+        print(f"Combined data saved to {output_path}")
+    else:
+        print("No data to combine.")
 
-combined_data = combined_data.drop_duplicates()
-
-print("Number of rows after removing duplicates:", len(combined_data))
-
-print("Missing Values:")
-print(combined_data.isnull().sum())
-
-combined_data.to_csv("climate change/bird dataset/combined_occurrence.csv", index=False)
-print("Combined dataset saved as 'combined_occurrence.csv'")
+output_path = r"S:\Impact of Climate Change on Birds\Capstone 2\Climate change\bird dataset\combined_occurrence.csv"
+combine_datasets(occurrence_paths, output_path)
