@@ -1,28 +1,79 @@
-import pandas as pd
-import rasterio
+import os
+import geopandas as gpd
 import matplotlib.pyplot as plt
+import rasterio
+import pandas as pd
+from rasterio.plot import show
+import numpy as np
 
-# Load bird data
-bird_data_path = "combine_datasets.csv"
-birds = pd.read_csv(bird_data_path)
+combined_data_path = r"S:\Impact of Climate Change on Birds\Capstone 2\Climate change\bird dataset\combined_occurrence.csv"
+time_periods = {
+    "current": r"S:\Impact of Climate Change on Birds\Capstone 2\Climate change\climate data\current",
+    "future_2021_2040": r"S:\Impact of Climate Change on Birds\Capstone 2\Climate change\climate data\future 2021-2040",
+    "future_2041_2060": r"S:\Impact of Climate Change on Birds\Capstone 2\Climate change\climate data\future 2041-2060",
+    "future_2081_2100": r"S:\Impact of Climate Change on Birds\Capstone 2\Climate change\climate data\future 2081-2100"
+}
 
-# Load the climate map
-map_file = "climate change/climate data/current/wc2.1_2.5m_bio/wc2.1_2.5m_bio_1.tif"
-with rasterio.open(map_file) as src:
-    map_data = src.read(1)
-    transform = src.transform
+def find_first_tif(folder_path):
+    """
+    Find the first .tif file in the given folder and return its path.
+    """
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            if file.endswith(".tif"):
+                return os.path.join(root, file)
+    return None
 
-# Plot the map and bird points
-plt.figure(figsize=(8, 6))
-plt.imshow(map_data, cmap='viridis', extent=(src.bounds.left, src.bounds.right, src.bounds.bottom, src.bounds.top))
-plt.colorbar(label="Map Data")
-plt.title("Bird Locations on Climate Map")
+def overlay_bird_data(map_path, bird_data_path):
+    """
+    Overlay bird data on a raster map.
+    """
+    try:
+        bird_data = pd.read_csv(bird_data_path)
 
-# Add bird points
-for _, row in birds.iterrows():
-    plt.scatter(row["Longitude"], row["Latitude"], label=row["Species"], s=10, alpha=0.7)
+        if 'decimalLongitude' not in bird_data.columns or 'decimalLatitude' not in bird_data.columns:
+            raise ValueError("The dataset does not contain required columns 'decimalLongitude' and 'decimalLatitude'.")
 
-plt.legend(loc="upper right")
-plt.xlabel("Longitude")
-plt.ylabel("Latitude")
-plt.show()
+        bird_gdf = gpd.GeoDataFrame(
+            bird_data,
+            geometry=gpd.points_from_xy(bird_data.decimalLongitude, bird_data.decimalLatitude),
+            crs="EPSG:4326"
+        )
+
+        with rasterio.open(map_path) as src:
+            raster_data = src.read(1)
+
+            raster_data = np.where(np.isfinite(raster_data), raster_data, np.nan)
+
+            fig, ax = plt.subplots(figsize=(10, 8))
+            show(raster_data, transform=src.transform, cmap="viridis", ax=ax)
+            
+            bird_gdf.plot(ax=ax, color="red", markersize=5, label="Bird Locations")
+            
+            plt.title(f"Bird Data Overlay on Map: {os.path.basename(map_path)}")
+            plt.xlabel("Longitude")
+            plt.ylabel("Latitude")
+            plt.legend()
+            plt.show()
+
+    except Exception as e:
+        print(f"Error while overlaying bird data on map: {e}")
+
+if __name__ == "__main__":
+    print("Select a time period for climate data:")
+    for i, period in enumerate(time_periods.keys(), start=1):
+        print(f"{i}. {period}")
+    
+    try:
+        choice = int(input("Enter the number corresponding to your choice: ").strip())
+        selected_period = list(time_periods.keys())[choice - 1]
+        climate_folder = time_periods[selected_period]
+
+        map_path = find_first_tif(climate_folder)
+        if not map_path:
+            print(f"No .tif files found in {climate_folder}. Please add climate data and try again.")
+        else:
+            overlay_bird_data(map_path, combined_data_path)
+
+    except (ValueError, IndexError):
+        print("Invalid choice. Please run the script again and select a valid option.")
