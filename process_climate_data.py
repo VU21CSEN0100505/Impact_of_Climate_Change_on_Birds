@@ -3,6 +3,7 @@ import rasterio
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Base folder for climate data
 base_path = r"S:\Impact of Climate Change on Birds\Capstone 2\Climate change\climate data"
 
 time_periods = {
@@ -20,6 +21,7 @@ def display_raster(file_path):
         with rasterio.open(file_path) as src:
             raster_data = src.read(1)
 
+            # Replace invalid or NaN values with a default
             raster_data = np.where(np.isfinite(raster_data), raster_data, np.nan)
 
             print(f"\nMetadata for {file_path}:")
@@ -59,12 +61,15 @@ def find_and_display_raster():
     """
     Guide the user through folder and file selection, then display the raster.
     """
+    # Step 1: Select the time period
     period = get_choice(list(time_periods.keys()), "\nSelect a time period:")
     folder_path = time_periods[period]
 
+    # Step 2: Check for .tif files in the selected folder
     tif_files = [f for f in os.listdir(folder_path) if f.endswith(".tif")]
 
     if period == "current":
+        # For 'current', navigate subfolders to locate .tif files
         subfolders = [f for f in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, f))]
         if not subfolders:
             print("No subfolders available in this time period.")
@@ -82,6 +87,7 @@ def find_and_display_raster():
         file_path = os.path.join(subfolder_path, tif_file)
 
     else:
+        # For future periods, look directly in the folder
         if not tif_files:
             print("No .tif files available in this time period.")
             return
@@ -89,8 +95,10 @@ def find_and_display_raster():
         tif_file = get_choice(tif_files, f"\nSelect a .tif file in '{period}':")
         file_path = os.path.join(folder_path, tif_file)
 
+    # Step 3: Display the raster
     display_raster(file_path)
 
+# Main loop
 while True:
     print("\n--- Climate Data Map Viewer ---")
     find_and_display_raster()
